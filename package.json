@@ -1,6 +1,6 @@
 {
   "name": "nextstack-saas-starter",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "scripts": {
     "build": "next build",
     "dev": "concurrently \"npm run dev:next\" \"npm run format:watch\" --names \"next,biome\" --prefix name --prefix-colors \"cyan,yellow\"",
