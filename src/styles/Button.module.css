@@ -1,0 +1,18 @@
+.root {
+  &[data-variant="filled"] {
+    background-color: var(--mantine-color-blue-5);
+    transition: background-color 100ms ease;
+
+    &:hover {
+      background-color: var(--mantine-color-blue-6);
+    }
+  }
+  &[data-variant="danger"] {
+    background-color: var(--mantine-color-red-5);
+    transition: background-color 100ms ease;
+
+    &:hover {
+      background-color: var(--mantine-color-red-6);
+    }
+  }
+}

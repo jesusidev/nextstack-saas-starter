@@ -1,0 +1,23 @@
+# AWS Configuration
+region  = "us-west-2"
+profile = "default"
+
+# Environment
+environment = "dev"
+
+# IAM User
+cicd_user_name = "app-template-cicd-dev"
+
+# Deployment Options
+enable_ec2_deploy = true  # Enable EC2 deployment via Systems Manager
+
+# Secret Management
+secret_recovery_days = 7  # Days to recover deleted secrets
+
+# Tags
+tags = {
+  Project     = "AppTemplate"
+  Environment = "dev"
+  ManagedBy   = "terraform"
+  Team        = "engineering"
+}

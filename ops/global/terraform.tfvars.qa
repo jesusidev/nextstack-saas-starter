@@ -1,0 +1,15 @@
+aws_region = "us-west-2"
+aws_account_id = "123456789012"  # Replace with your AWS account ID
+name_prefix = "nextstack-saas-starter-global-qa"
+cidr_block  = "10.1.0.0/16"
+azs         = ["us-west-2a", "us-west-2b"]
+
+# Cost-optimized defaults
+create_private_subnets = true
+enable_nat_gateway     = false
+
+tags = {
+  project     = "nextstack-saas-starter"
+  environment = "global-qa"
+  owner       = "Terraform"
+}

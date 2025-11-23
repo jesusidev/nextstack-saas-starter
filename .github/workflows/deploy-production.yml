@@ -1,0 +1,455 @@
+name: Production Deployment (Zero Downtime)
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag to deploy (e.g., v1.2.3 or latest)"
+        required: false
+        default: "latest"
+      environment:
+        description: "Environment to deploy to"
+        required: false
+        default: "production"
+        type: choice
+        options:
+          - development
+          - qa
+          - production
+
+permissions:
+  id-token: write # OIDC to AWS (no static keys)
+  contents: read
+
+env:
+  AWS_REGION: us-west-2
+
+jobs:
+  # ==============================================================================
+  # Job 1: Build, Test, and Push to Registry
+  # ==============================================================================
+  build-and-push:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+
+    outputs:
+      image-uri: ${{ steps.meta.outputs.IMAGE_URI }}
+      environment: ${{ steps.env.outputs.ENVIRONMENT }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || github.ref }}
+
+      - name: Determine environment
+        id: env
+        run: |
+          # Determine environment based on trigger
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            ENV="${{ github.event.inputs.environment }}"
+          elif [ "${{ github.event_name }}" = "release" ]; then
+            # Default to production, but fallback to development if PROD secrets not set
+            if [ -n "${{ secrets.AWS_OIDC_ROLE_ARN_PROD }}" ]; then
+              ENV="production"
+            else
+              ENV="production"
+              echo "⚠️  PROD secrets not configured, deploying to DEV instead"
+            fi
+          else
+            ENV="production"
+          fi
+
+          echo "ENVIRONMENT=${ENV}" >> $GITHUB_OUTPUT
+
+          # Set environment-specific variables
+          case "$ENV" in
+            development)
+              echo "ECR_REPOSITORY=your-app-dev" >> $GITHUB_OUTPUT
+              echo "AWS_ROLE_SECRET=AWS_OIDC_ROLE_ARN_DEV" >> $GITHUB_OUTPUT
+              echo "DOKPLOY_URL_SECRET=DOKPLOY_DEV_URL" >> $GITHUB_OUTPUT
+              echo "DOKPLOY_TOKEN_SECRET=DOKPLOY_DEV_TOKEN" >> $GITHUB_OUTPUT
+              echo "DOKPLOY_APP_ID_SECRET=DOKPLOY_DEV_APP_ID" >> $GITHUB_OUTPUT
+              echo "DOKPLOY_APP_URL_SECRET=DOKPLOY_DEV_APP_URL" >> $GITHUB_OUTPUT
+              ;;
+            qa)
+              echo "ECR_REPOSITORY=your-app-qa" >> $GITHUB_OUTPUT
+              echo "AWS_ROLE_SECRET=AWS_OIDC_ROLE_ARN_QA" >> $GITHUB_OUTPUT
+              echo "DOKPLOY_URL_SECRET=DOKPLOY_QA_URL" >> $GITHUB_OUTPUT
+              echo "DOKPLOY_TOKEN_SECRET=DOKPLOY_QA_TOKEN" >> $GITHUB_OUTPUT
+              echo "DOKPLOY_APP_ID_SECRET=DOKPLOY_QA_APP_ID" >> $GITHUB_OUTPUT
+              echo "DOKPLOY_APP_URL_SECRET=DOKPLOY_QA_APP_URL" >> $GITHUB_OUTPUT
+              ;;
+            production)
+              echo "ECR_REPOSITORY=your-app-prod" >> $GITHUB_OUTPUT
+              echo "AWS_ROLE_SECRET=AWS_OIDC_ROLE_ARN_PROD" >> $GITHUB_OUTPUT
+              echo "DOKPLOY_URL_SECRET=DOKPLOY_PROD_URL" >> $GITHUB_OUTPUT
+              echo "DOKPLOY_TOKEN_SECRET=DOKPLOY_PROD_TOKEN" >> $GITHUB_OUTPUT
+              echo "DOKPLOY_APP_ID_SECRET=DOKPLOY_PROD_APP_ID" >> $GITHUB_OUTPUT
+              echo "DOKPLOY_APP_URL_SECRET=DOKPLOY_PROD_APP_URL" >> $GITHUB_OUTPUT
+              ;;
+          esac
+
+          echo "### 🌍 Deployment Environment" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${ENV}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Set version tag
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            VERSION="${{ github.event.release.tag_name }}"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="latest"
+          fi
+
+          # Remove 'v' prefix if present
+          VERSION_CLEAN="${VERSION#v}"
+
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          echo "VERSION_CLEAN=${VERSION_CLEAN}" >> $GITHUB_OUTPUT
+          echo "IMAGE_TAG=${VERSION}" >> $GITHUB_OUTPUT
+
+          echo "### 📦 Deployment Version" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${VERSION}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+
+      # ----- AWS ECR: Login via OIDC (Environment-specific) -----
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets[steps.env.outputs.AWS_ROLE_SECRET] }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Option 2: DockerHub (Alternative - uncomment if using DockerHub)
+      # - name: Login to DockerHub
+      #   uses: docker/login-action@v3
+      #   with:
+      #     username: ${{ secrets.DOCKERHUB_USERNAME }}
+      #     password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set image URIs
+        id: meta
+        run: |
+          REGISTRY=${{ steps.ecr.outputs.registry }}
+          ECR_REPO="${{ steps.env.outputs.ECR_REPOSITORY }}"
+          VERSION_TAG="${{ steps.version.outputs.IMAGE_TAG }}"
+
+          echo "IMAGE_URI=${REGISTRY}/${ECR_REPO}:${VERSION_TAG}" >> $GITHUB_OUTPUT
+          echo "IMAGE_LATEST=${REGISTRY}/${ECR_REPO}:latest" >> $GITHUB_OUTPUT
+          echo "IMAGE_SHA=${REGISTRY}/${ECR_REPO}:${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      # ----- Build & Push Application Image -----
+      - name: Set build-time environment variables
+        id: build-env
+        run: |
+          ENV="${{ steps.env.outputs.ENVIRONMENT }}"
+
+          case "$ENV" in
+            development)
+              echo "CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY_DEV }}" >> $GITHUB_ENV
+              echo "CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY_DEV }}" >> $GITHUB_ENV
+              ;;
+            qa)
+              echo "CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY_QA }}" >> $GITHUB_ENV
+              echo "CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY_QA }}" >> $GITHUB_ENV
+              ;;
+            production)
+              echo "CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY_PROD }}" >> $GITHUB_ENV
+              echo "CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY_PROD }}" >> $GITHUB_ENV
+              ;;
+          esac
+
+      - name: Build and push application image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.app
+          target: production
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.IMAGE_URI }}
+            ${{ steps.meta.outputs.IMAGE_LATEST }}
+            ${{ steps.meta.outputs.IMAGE_SHA }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+          secrets: |
+            clerk_publishable_key=${{ env.CLERK_PUBLISHABLE_KEY }}
+            clerk_secret_key=${{ env.CLERK_SECRET_KEY }}
+
+      - name: Image build summary
+        run: |
+          echo "### 🐳 Docker Image Built" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version Tag:** \`${{ steps.meta.outputs.IMAGE_URI }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Latest Tag:** \`${{ steps.meta.outputs.IMAGE_LATEST }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**SHA Tag:** \`${{ steps.meta.outputs.IMAGE_SHA }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Note:** Migrations run automatically in container entrypoint" >> $GITHUB_STEP_SUMMARY
+
+  # ==============================================================================
+  # Job 2: Deploy Application with Zero Downtime
+  # ==============================================================================
+  # Note: Database migrations run automatically in the container entrypoint
+  deploy-application:
+    name: Deploy Application (Zero Downtime)
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set environment variables
+        id: deploy-env
+        run: |
+          ENV="${{ needs.build-and-push.outputs.environment }}"
+
+          # Map environment to secret names
+          case "$ENV" in
+            development)
+              echo "DOKPLOY_URL=${{ secrets.DOKPLOY_DEV_URL }}" >> $GITHUB_ENV
+              echo "DOKPLOY_TOKEN=${{ secrets.DOKPLOY_DEV_TOKEN }}" >> $GITHUB_ENV
+              echo "DOKPLOY_APP_ID=${{ secrets.DOKPLOY_DEV_APP_ID }}" >> $GITHUB_ENV
+              ;;
+            qa)
+              echo "DOKPLOY_URL=${{ secrets.DOKPLOY_QA_URL }}" >> $GITHUB_ENV
+              echo "DOKPLOY_TOKEN=${{ secrets.DOKPLOY_QA_TOKEN }}" >> $GITHUB_ENV
+              echo "DOKPLOY_APP_ID=${{ secrets.DOKPLOY_QA_APP_ID }}" >> $GITHUB_ENV
+              ;;
+            production)
+              echo "DOKPLOY_URL=${{ secrets.DOKPLOY_PROD_URL }}" >> $GITHUB_ENV
+              echo "DOKPLOY_TOKEN=${{ secrets.DOKPLOY_PROD_TOKEN }}" >> $GITHUB_ENV
+              echo "DOKPLOY_APP_ID=${{ secrets.DOKPLOY_PROD_APP_ID }}" >> $GITHUB_ENV
+              ;;
+          esac
+
+      - name: Trigger Dokploy deployment
+        id: deploy
+        run: |
+          ENV="${{ needs.build-and-push.outputs.environment }}"
+          echo "🚀 Deploying application to Dokploy (${ENV})..."
+
+          RESPONSE=$(curl -sS -w "\n%{http_code}" -X POST \
+            "${DOKPLOY_URL}/api/trpc/application.deploy" \
+            -H "x-api-key: ${DOKPLOY_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"json\": {
+                \"applicationId\": \"${DOKPLOY_APP_ID}\",
+                \"titleLog\": \"${ENV} deployment - ${{ github.sha }}\"
+              }
+            }")
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 201 ]; then
+            echo "✅ Deployment triggered successfully"
+            echo "Response: $BODY"
+          else
+            echo "❌ Deployment failed with HTTP $HTTP_CODE"
+            echo "Response: $BODY"
+            exit 1
+          fi
+
+      - name: Wait for deployment to complete
+        run: |
+          echo "⏳ Waiting for deployment to complete..."
+
+          MAX_WAIT=300  # 5 minutes
+          INTERVAL=15
+          ELAPSED=0
+
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            STATUS=$(curl -sS -X GET \
+              "${DOKPLOY_URL}/api/trpc/application.one?input=%7B%22json%22%3A%7B%22applicationId%22%3A%22${DOKPLOY_APP_ID}%22%7D%7D" \
+              -H "Authorization: Bearer ${DOKPLOY_TOKEN}" \
+              | jq -r '.result.data.json.applicationStatus' || echo "unknown")
+            
+            echo "Deployment status: $STATUS (${ELAPSED}s elapsed)"
+            
+            if [ "$STATUS" = "done" ]; then
+              echo "✅ Deployment completed successfully"
+              exit 0
+            elif [ "$STATUS" = "error" ]; then
+              echo "❌ Deployment failed"
+              exit 1
+            fi
+            
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+
+          echo "⚠️  Deployment timeout after ${MAX_WAIT}s"
+          exit 1
+
+  # ==============================================================================
+  # Job 3: Health Check & Verification
+  # ==============================================================================
+  verify-deployment:
+    name: Verify Deployment Health
+    needs: deploy-application
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Wait for application startup
+        run: |
+          echo "⏳ Waiting for application to start (30s grace period)..."
+          sleep 30
+
+      - name: Set environment variables
+        run: |
+          ENV="${{ needs.build-and-push.outputs.environment }}"
+
+          case "$ENV" in
+            development)
+              echo "APP_URL=${{ secrets.DOKPLOY_DEV_APP_URL }}" >> $GITHUB_ENV
+              ;;
+            qa)
+              echo "APP_URL=${{ secrets.DOKPLOY_QA_APP_URL }}" >> $GITHUB_ENV
+              ;;
+            production)
+              echo "APP_URL=${{ secrets.DOKPLOY_PROD_APP_URL }}" >> $GITHUB_ENV
+              ;;
+          esac
+
+      - name: Health check
+        id: health
+        run: |
+          echo "🏥 Running health checks..."
+
+          MAX_RETRIES=10
+          RETRY_DELAY=5
+
+          for i in $(seq 1 $MAX_RETRIES); do
+            echo "Health check attempt $i/$MAX_RETRIES..."
+            
+            HTTP_CODE=$(curl -sS -o /dev/null -w "%{http_code}" \
+              -X GET "${APP_URL}/api/health" \
+              --max-time 10 || echo "000")
+            
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "✅ Health check passed (HTTP $HTTP_CODE)"
+              exit 0
+            else
+              echo "⚠️  Health check failed (HTTP $HTTP_CODE)"
+              
+              if [ $i -lt $MAX_RETRIES ]; then
+                echo "Retrying in ${RETRY_DELAY}s..."
+                sleep $RETRY_DELAY
+              fi
+            fi
+          done
+
+          echo "❌ Health check failed after $MAX_RETRIES attempts"
+          exit 1
+
+      - name: Smoke tests
+        run: |
+          echo "🧪 Running smoke tests..."
+
+          # Test 1: Homepage loads
+          echo "Test 1: Homepage..."
+          if curl -sS -f -o /dev/null "${APP_URL}" --max-time 10; then
+            echo "✅ Homepage loads"
+          else
+            echo "❌ Homepage failed"
+            exit 1
+          fi
+
+          # Test 2: API responds
+          echo "Test 2: API health endpoint..."
+          HEALTH_RESPONSE=$(curl -sS "${APP_URL}/api/health" --max-time 10)
+          if echo "$HEALTH_RESPONSE" | grep -q "ok\|healthy\|success"; then
+            echo "✅ API responds correctly"
+          else
+            echo "❌ API response unexpected: $HEALTH_RESPONSE"
+            exit 1
+          fi
+
+          echo "✅ All smoke tests passed"
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "### 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployed by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Application URL:** ${{ secrets.DOKPLOY_APP_URL }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "**Status:** ✅ Deployment successful and verified" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Status:** ❌ Deployment verification failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Action Required:** Check application logs in Dokploy" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # ==============================================================================
+  # Job 4: Rollback on Failure (Optional)
+  # ==============================================================================
+  rollback-on-failure:
+    name: Rollback on Failure
+    needs: [deploy-application, verify-deployment]
+    if: failure()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger rollback
+        run: |
+          echo "⚠️  Deployment failed, initiating rollback..."
+
+          # Get previous deployment ID from Dokploy
+          PREV_DEPLOYMENT=$(curl -sS -X GET \
+            "${{ secrets.DOKPLOY_URL }}/api/trpc/deployment.all?input=%7B%22json%22%3A%7B%22applicationId%22%3A%22${{ env.DOKPLOY_APP_ID }}%22%7D%7D" \
+            -H "Authorization: Bearer ${{ secrets.DOKPLOY_TOKEN }}" \
+            | jq -r '.result.data.json[1].deploymentId' || echo "")
+
+          if [ -n "$PREV_DEPLOYMENT" ]; then
+            echo "Rolling back to deployment: $PREV_DEPLOYMENT"
+            
+            curl -sS -X POST \
+              "${{ secrets.DOKPLOY_URL }}/api/trpc/deployment.redeploy" \
+              -H "Authorization: Bearer ${{ secrets.DOKPLOY_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              -d "{
+                \"json\": {
+                  \"deploymentId\": \"$PREV_DEPLOYMENT\"
+                }
+              }"
+            
+            echo "✅ Rollback initiated"
+          else
+            echo "❌ Could not find previous deployment for rollback"
+            exit 1
+          fi
+
+      - name: Notify team
+        if: always()
+        run: |
+          echo "### ⚠️  Deployment Failed - Rollback Initiated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Failed by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Action Required:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Check Dokploy logs for errors" >> $GITHUB_STEP_SUMMARY
+          echo "2. Review failed deployment commit" >> $GITHUB_STEP_SUMMARY
+          echo "3. Fix issues and redeploy" >> $GITHUB_STEP_SUMMARY
+
+          # Optional: Send Slack/Discord notification
+          # curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+          #   -H 'Content-Type: application/json' \
+          #   -d '{"text":"🚨 Production deployment failed and rolled back"}'

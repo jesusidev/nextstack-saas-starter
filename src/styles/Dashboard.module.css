@@ -1,0 +1,22 @@
+/* Dashboard styles for NextStack SaaS Starter */
+
+.addProduct {
+  margin-bottom: 1rem;
+}
+
+/* Mobile-first: single column by default */
+.product {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+  justify-items: center;
+}
+
+/* Tablet and up: responsive grid with min 280px columns */
+@media (min-width: $breakpoint-tablet) {
+  .product {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    justify-items: start;
+  }
+}

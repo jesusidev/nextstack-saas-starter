@@ -1,0 +1,213 @@
+name: PR Validation
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  validate-pr:
+    name: Validate PR Title & Branch Name
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Validate PR Title
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Require conventional commit format
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+            revert
+          # Require lowercase type
+          requireScope: false
+          # Allow custom scopes
+          scopes: |
+            auth
+            api
+            ui
+            dashboard
+            database
+            docker
+            terraform
+            docs
+          # Subject validation
+          subjectPattern: ^(?![aA-zZ]).+$
+          subjectPatternError: |
+            The subject "{subject}" found in the pull request title "{title}"
+            didn't match the configured pattern. Please ensure that the subject
+            doesn't start with an uppercase character.
+          # Ignore merge commits
+          ignoreLabels: |
+            ignore-semantic-pr
+          # Custom error messages
+          headerPattern: '^(\w+)(?:\(([^\)]*)\))?!?: (.+)$'
+          headerPatternCorrespondence: type, scope, subject
+
+      - name: Validate Branch Name
+        run: |
+          BRANCH_NAME="${{ github.head_ref }}"
+          
+          echo "🔍 Validating branch name: $BRANCH_NAME"
+          
+          # Allow main/master/develop branches
+          if [[ "$BRANCH_NAME" =~ ^(main|master|develop)$ ]]; then
+            echo "✅ Base branch - validation skipped"
+            exit 0
+          fi
+          
+          # Valid branch patterns
+          VALID_PATTERNS=(
+            "^feature/.+"
+            "^fix/.+"
+            "^hotfix/.+"
+            "^refactor/.+"
+            "^docs/.+"
+            "^test/.+"
+            "^chore/.+"
+            "^perf/.+"
+            "^ci/.+"
+            "^build/.+"
+            "^revert/.+"
+          )
+          
+          # Check if branch matches any valid pattern
+          VALID=false
+          for pattern in "${VALID_PATTERNS[@]}"; do
+            if [[ "$BRANCH_NAME" =~ $pattern ]]; then
+              VALID=true
+              break
+            fi
+          done
+          
+          if [ "$VALID" = true ]; then
+            echo "✅ Branch name is valid: $BRANCH_NAME"
+            
+            if [[ "$BRANCH_NAME" =~ _+ ]]; then
+              echo "⚠️  Warning: Branch name contains underscores"
+              echo "   Recommended: Use hyphens (e.g., feature/my-feature)"
+            fi
+            
+            exit 0
+          else
+            echo "❌ Invalid branch name: $BRANCH_NAME"
+            echo ""
+            echo "Branch names must follow the pattern: <type>/<description>"
+            echo ""
+            echo "Valid types:"
+            echo "  • feature/   - New features"
+            echo "  • fix/       - Bug fixes"
+            echo "  • hotfix/    - Urgent production fixes"
+            echo "  • refactor/  - Code refactoring"
+            echo "  • docs/      - Documentation updates"
+            echo "  • test/      - Test additions"
+            echo "  • chore/     - Maintenance tasks"
+            echo "  • perf/      - Performance improvements"
+            echo "  • ci/        - CI/CD changes"
+            echo "  • build/     - Build system changes"
+            echo ""
+            echo "Examples:"
+            echo "  ✅ feature/user-authentication"
+            echo "  ✅ fix/memory-leak-in-uploads"
+            echo "  ✅ hotfix/critical-security-patch"
+            echo "  ✅ docs/update-readme"
+            echo ""
+            echo "Current branch: $BRANCH_NAME"
+            echo ""
+            echo "To rename your branch:"
+            echo "  git branch -m <type>/<description>"
+            echo "  git push origin -u <type>/<description>"
+            echo "  git push origin --delete $BRANCH_NAME"
+            
+            exit 1
+          fi
+
+      - name: Add PR Comment on Failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branchName = context.payload.pull_request.head.ref;
+            const prTitle = context.payload.pull_request.title;
+            
+            const comment = `## ❌ PR Validation Failed
+            
+            ### Branch Name Issue
+            
+            Your branch name \`${branchName}\` doesn't follow our naming convention.
+            
+            **Required format:** \`<type>/<description>\`
+            
+            **Valid types:**
+            - \`feature/\` - New features
+            - \`fix/\` - Bug fixes
+            - \`hotfix/\` - Urgent production fixes
+            - \`refactor/\` - Code refactoring
+            - \`docs/\` - Documentation updates
+            - \`test/\` - Test additions
+            - \`chore/\` - Maintenance tasks
+            - \`perf/\` - Performance improvements
+            
+            **Examples:**
+            - ✅ \`feature/user-authentication\`
+            - ✅ \`fix/memory-leak-in-uploads\`
+            - ✅ \`hotfix/critical-security-patch\`
+            - ❌ \`new-feature\` (missing type)
+            - ❌ \`feature-user-auth\` (wrong separator)
+            
+            ### PR Title Issue
+            
+            Your PR title must follow [Conventional Commits](https://www.conventionalcommits.org/) format:
+            
+            **Format:** \`<type>(<scope>): <description>\`
+            
+            **Examples:**
+            - ✅ \`feat: add user authentication\`
+            - ✅ \`fix: resolve memory leak in uploads\`
+            - ✅ \`feat(auth): add two-factor authentication\`
+            - ✅ \`Feat: Add feature\` (uppercase type)
+            - ❌ \`Added new feature\` (missing type)
+            
+            ### How to Fix
+            
+            **1. Rename your branch:**
+            \`\`\`bash
+            git branch -m <type>/<description>
+            git push origin -u <type>/<description>
+            git push origin --delete ${branchName}
+            \`\`\`
+            
+            **2. Update your PR title** using the "Edit" button above.
+            
+            **3. Push changes** to re-trigger validation.
+            
+            ---
+            
+            📚 **Documentation:** [Versioning and Releases](../docs/versioning-and-releases.md)
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Validation Summary
+        if: success()
+        run: |
+          echo "### ✅ PR Validation Passed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** \`${{ github.head_ref }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**PR Title:** \`${{ github.event.pull_request.title }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All naming conventions are followed correctly! 🎉" >> $GITHUB_STEP_SUMMARY

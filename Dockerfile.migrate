@@ -1,0 +1,36 @@
+# ==============================================================================
+# Prisma Migration Container
+# Purpose: Runs database migrations as a separate job before app deployment
+# Usage: Run this as an init container or one-off job before starting app
+# ==============================================================================
+
+FROM node:22-alpine AS base
+
+RUN apk add --no-cache libc6-compat openssl
+
+WORKDIR /app
+
+# Copy package files and prisma schema
+COPY package.json package-lock.json ./
+COPY prisma ./prisma/
+
+# Install only prisma dependencies
+RUN npm install prisma @prisma/client --no-save && \
+    npx prisma generate
+
+# Copy migration script
+COPY scripts/migrate-entrypoint.sh ./migrate-entrypoint.sh
+RUN chmod +x ./migrate-entrypoint.sh
+
+# Set environment variables
+ENV NODE_ENV=production
+
+# ==============================================================================
+# Production Stage (for Dokploy compatibility)
+# ==============================================================================
+FROM base AS production
+
+WORKDIR /app
+
+# Run migrations
+ENTRYPOINT ["./migrate-entrypoint.sh"]

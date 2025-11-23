@@ -1,0 +1,22 @@
+{
+  "watch": ["src/"],
+  "ext": "js,jsx,ts,tsx,json",
+  "ignore": [
+    "node_modules/",
+    ".next/",
+    "dist/",
+    "build/",
+    "*.test.*",
+    "*.spec.*",
+    "**/*.d.ts",
+    ".vscode/",
+    ".git/"
+  ],
+  "exec": "node scripts/format-watch.js",
+  "delay": 2000,
+  "verbose": false,
+  "restartable": "rs",
+  "env": {
+    "NODE_ENV": "development"
+  }
+}

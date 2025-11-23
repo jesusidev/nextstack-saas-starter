@@ -1,0 +1,88 @@
+# ==============================================================================
+# Optimized Docker Compose for Development
+# Features:
+# - Fast development builds with proper volume mounts
+# - Non-root user security
+# - Optimized caching and performance
+# ==============================================================================
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+      target: development
+      cache_from:
+        - node:22-alpine
+    ports:
+      - "3001:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-appuser}:${POSTGRES_PASSWORD:-apppass}@postgres:5432/${POSTGRES_DB:-nextstack-saas-starter}
+      - NEXT_TELEMETRY_DISABLED=1
+      # AWS S3 Configuration (permanent credentials)
+      - S3_ASSETS_BUCKET=${S3_ASSETS_BUCKET}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Running Prisma migrations..."
+        npx prisma migrate deploy
+        echo "Starting development server..."
+        npm run dev:only
+
+  postgres:
+    build:
+      context: .
+      dockerfile: postgres.dockerfile
+    image: postgres:15.2-alpine
+    container_name: ${PG_CONTAINER_NAME:-nextstack-saas-starter-postgres}
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-nextstack-saas-starter}
+      POSTGRES_USER: ${POSTGRES_USER:-appuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-apppass}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+      PGDATA: ${PGDATA:-/data/postgres}
+    volumes:
+      - postgres_data:${PGDATA:-/data/postgres}
+      - ./scripts/postgres:/docker-entrypoint-initdb.d/
+    ports:
+      - '5433:5432'
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-appuser} -d ${POSTGRES_DB:-nextstack-saas-starter}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  postgres_data:
+    driver: local
+  nextjs_cache:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge

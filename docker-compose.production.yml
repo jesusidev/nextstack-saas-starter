@@ -1,0 +1,124 @@
+# ==============================================================================
+# Optimized Production Docker Compose
+# Features:
+# - Ultra-minimal distroless production images
+# - Proper security hardening
+# - Health checks and monitoring
+# - Rolling updates and scaling
+# ==============================================================================
+
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+      target: production
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+      cache_from:
+        - nextstack-saas-starter/app:latest
+        - gcr.io/distroless/nodejs22-debian12
+    image: nextstack-saas-starter/app:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      - DATABASE_URL=${DATABASE_URL}
+      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+      - NEXT_PUBLIC_CLERK_SIGN_IN_URL=${NEXT_PUBLIC_CLERK_SIGN_IN_URL}
+      - NEXT_PUBLIC_CLERK_SIGN_UP_URL=${NEXT_PUBLIC_CLERK_SIGN_UP_URL}
+      - NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=${NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL}
+      - NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=${NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL}
+      - S3_ASSETS_BUCKET=${S3_ASSETS_BUCKET}
+      - AWS_REGION=${AWS_REGION}
+      - PRISMA_MIGRATE_ON_START=${PRISMA_MIGRATE_ON_START:-true}
+    restart: always
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+        window: 120s
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=100m
+
+  # Optional: Redis for caching and session storage
+  redis:
+    image: redis:7-alpine
+    restart: always
+    networks:
+      - app-network
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-defaultpassword}
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
+
+  # Optional: Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - app
+    networks:
+      - app-network
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  redis_data:
+
+networks:
+  app-network:
+    driver: bridge
+
+# For production, it's recommended to use:
+# - External managed database (RDS, Cloud SQL, etc.)
+# - External Redis instance for session/cache
+# - Load balancer instead of nginx container
+# - Container registry for image storage
+# - Secrets management (AWS Secrets Manager, etc.)

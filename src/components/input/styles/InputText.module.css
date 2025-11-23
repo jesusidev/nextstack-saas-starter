@@ -1,0 +1,7 @@
+.input {
+  background-color: light-dark(var(--mantine-color-red-8), rgba(var(--mantine-color-red-0), 0.15));
+}
+
+.icon {
+  color: light-dark(var(--mantine-color-red-7), var(--mantine-color-red-6));
+}

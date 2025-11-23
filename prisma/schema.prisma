@@ -1,0 +1,146 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+}
+
+enum UploadStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  DELETED
+}
+
+model User {
+  id               String            @id @default(cuid())
+  firstName        String?
+  lastName         String?
+  email            String            @unique
+  role             Role              @default(USER)
+  products         Product[]
+  projects         Project[]
+  categories       Category[]
+  favoriteProducts FavoriteProduct[]
+  favoriteProjects FavoriteProject[]
+}
+
+model Project {
+  id               String            @id @default(cuid())
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  name             String            @unique
+  status           Status            @default(ACTIVE)
+  user             User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId           String?
+  product          Product[]
+  favoriteProjects FavoriteProject[]
+}
+
+model Product {
+  id               String            @id @default(cuid())
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  name             String
+  brand            String?
+  sku              String?
+  description      String?
+  status           Status            @default(ACTIVE)
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId           String?
+  remaining        Remaining?
+  storeId          String?
+  project          Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  projectId        String?
+  categories       ProductCategory[]
+  favoriteProducts FavoriteProduct[]
+  images           ProductImage[]
+  fileUploads      FileUpload[]
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  url       String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+
+  @@unique([productId, url])
+}
+
+model ProductCategory {
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId  String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId String
+
+  @@id([productId, categoryId])
+}
+
+model Remaining {
+  id        String   @id @default(cuid())
+  quantity  Int      @default(0)
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productId String?  @unique
+}
+
+model Category {
+  id                String            @id @default(cuid())
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  name              String
+  status            Status            @default(ACTIVE)
+  user              User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId            String?
+  ProductCategories ProductCategory[]
+}
+
+model FavoriteProduct {
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+
+  @@id([userId, productId])
+}
+
+model FavoriteProject {
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+
+  @@id([userId, projectId])
+}
+
+model FileUpload {
+  id          String       @id @default(cuid())
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  key         String       @unique
+  filename    String
+  contentType String
+  fileSize    Int?
+  status      UploadStatus @default(PENDING)
+  userId      String
+  productId   String?
+  product     Product?     @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}

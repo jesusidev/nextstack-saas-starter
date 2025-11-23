@@ -1,0 +1,23 @@
+# AWS Configuration
+region  = "us-west-2"
+profile = "default"
+
+# Domain Configuration
+domain_name = "dev.app-template.com"
+
+# Additional domains for certificate (optional)
+subject_alternative_names = [
+  "www.dev.app-template.com"
+]
+
+# Route53 Configuration
+create_hosted_zone = false  # Set to true to create new hosted zone
+create_www_record  = true   # Create www CNAME
+
+# Tags
+tags = {
+  Project     = "AppTemplate"
+  Environment = "dev"
+  ManagedBy   = "terraform"
+  Team        = "engineering"
+}

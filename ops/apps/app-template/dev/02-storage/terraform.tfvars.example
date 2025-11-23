@@ -1,0 +1,16 @@
+aws_region     = "us-west-2"
+aws_account_id = "123456789012"
+aws_profile    = "jesusidev-DEV"
+name_prefix    = "app-template-app-dev"
+
+# S3 Bucket Name (must be globally unique)
+assets_bucket_name  = "app-template-dev-assets"
+
+# Tags
+tags = {
+  project     = "app-template"
+  environment = "dev"
+  owner       = "DevTeam"
+  ManagedBy   = "Terraform"
+  Layer       = "ops-apps-app-template-dev-storage"
+}

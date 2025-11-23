@@ -1,0 +1,120 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# database
+/prisma/db.sqlite
+/prisma/db.sqlite-journal
+
+# next.js
+/.next/
+/out/
+next-env.d.ts
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# local env files
+# do not commit any .env files to git, except for the .env.example file. https://create.t3.gg/en/usage/env-variables#using-environment-variables
+.env
+.env*.local
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+
+# JetBrains
+.idea
+
+# Playwright specific
+playwright-report/
+test-results/
+playwright/.auth/
+playwright/.clerk/
+
+# Ignore Terraform local state files
+/ops/*/*/*.terraform/*
+/ops/*/*/*.tfstate
+/ops/*/*/*.tfstate.*
+/ops/global/*.terraform/*
+/ops/global/*.tfstate
+/ops/global/*.tfstate.*
+
+# Ignore crash log files
+/ops/*/*/crash.log
+/ops/global/crash.log
+
+# Ignore override files
+/ops/*/*/override.tf
+/ops/*/*/override.tf.json
+/ops/*/*/*_override.tf
+/ops/*/*/*_override.tf.json
+/ops/global/override.tf
+/ops/global/override.tf.json
+/ops/global/*_override.tf
+/ops/global/*_override.tf.json
+
+# Ignore CLI configuration files
+/ops/*/*/.terraformrc
+/ops/*/*/terraform.rc
+/ops/global/.terraformrc
+/ops/global/terraform.rc
+
+# Ignore lock files
+# /infra/.terraform.lock.hcl
+
+# Ignore Terraform log files
+/ops/*/*/terraform.log
+/ops/global/terraform.log
+
+# Ignore TF Cloud/Enterprise files
+/ops/*/*/*.tfplan
+/ops/global/*.tfplan
+
+# Ignore old .terraform directories
+/ops/*/*/.terraform
+/ops/global/.terraform
+/ops/applications/*/dev/.terraform/
+
+
+# Terraform (global ignores)
+**/.terraform/
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+# Sensitive variable files (keep examples)
+*.tfvars
+*.tfvars.json
+# Crash logs
+crash.log
+# Local overrides
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+# CLI config
+.terraformrc
+terraform.rc
+# Provider lockfile (commit this file; do not ignore)
+# Plan files
+*.tfplan
+# Terraform logs
+terraform.log

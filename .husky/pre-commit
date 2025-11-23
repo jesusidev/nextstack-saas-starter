@@ -1,0 +1,5 @@
+# Validate branch name
+./scripts/validate-branch-name.sh || exit 1
+
+# Run lint-staged
+npx lint-staged

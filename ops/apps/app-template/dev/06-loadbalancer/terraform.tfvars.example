@@ -1,0 +1,31 @@
+# AWS Configuration
+region  = "us-west-2"
+profile = "default"
+
+# Network Configuration
+vpc_id     = "vpc-xxxxxxxxx"  # From ops/global
+subnet_ids = [
+  "subnet-xxxxxxxx",  # Public subnet in AZ 1
+  "subnet-yyyyyyyy"   # Public subnet in AZ 2 (different AZ required)
+]
+
+# ALB Configuration
+alb_name    = "app-template-dev-alb"
+target_port = 3000  # Must match app_port from 05-compute
+
+# Health Check
+health_check_path = "/api/health"
+
+# SSL/TLS (optional - leave empty for HTTP only)
+certificate_arn = ""  # Set to ACM cert ARN from 07-dns-certs for HTTPS
+
+# Protection
+enable_deletion_protection = false  # Set to true in production
+
+# Tags
+tags = {
+  Project     = "AppTemplate"
+  Environment = "dev"
+  ManagedBy   = "terraform"
+  Team        = "engineering"
+}

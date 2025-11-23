@@ -1,0 +1,100 @@
+# ==============================================================================
+# Optimized QA Docker Compose
+# Features:
+# - Production-like build with debugging capabilities
+# - Isolated QA database
+# - Monitoring and logging
+# ==============================================================================
+
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+      target: qa
+    image: nextstack-saas-starter/app:qa
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_APP_ENV=qa
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}-qa
+      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+      - NEXT_PUBLIC_CLERK_SIGN_IN_URL=${NEXT_PUBLIC_CLERK_SIGN_IN_URL}
+      - NEXT_PUBLIC_CLERK_SIGN_UP_URL=${NEXT_PUBLIC_CLERK_SIGN_UP_URL}
+      - NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=${NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL}
+      - NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=${NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL}
+      - S3_ASSETS_BUCKET=${S3_ASSETS_BUCKET}
+      - AWS_REGION=${AWS_REGION}
+      - PRISMA_MIGRATE_ON_START=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+    networks:
+      - qa-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  postgres:
+    build:
+      context: .
+      dockerfile: postgres.dockerfile
+    image: postgres:15.2-alpine
+    container_name: ${PG_CONTAINER_NAME:-nextstack-saas-starter-postgres}-qa
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}-qa
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+      PGDATA: ${PGDATA}
+    volumes:
+      - postgres_qa_data:${PGDATA}
+      - ./scripts/postgres:/docker-entrypoint-initdb.d/
+    ports:
+      - '5434:5432'
+    restart: always
+    networks:
+      - qa-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}-qa"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
+
+  # Optional: Monitoring with lightweight tools
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    networks:
+      - qa-network
+
+volumes:
+  postgres_qa_data:
+    driver: local
+
+networks:
+  qa-network:
+    driver: bridge

@@ -1,0 +1,28 @@
+region = "us-west-2"
+name   = "global-dev"
+
+cidr_block = "10.0.0.0/16"
+
+public_subnet_cidrs = [
+  "10.0.1.0/24",
+  "10.0.2.0/24",
+]
+
+private_subnet_cidrs = [
+  "10.0.21.0/24",
+  "10.0.22.0/24",
+]
+
+# Leave empty to auto-select first two AZs in the chosen region
+azs = ["us-west-2a", "us-west-2b"]
+
+enable_nat_gateway = false
+
+
+tags = {
+  project     = "your-project-name"  # Replace with your project name
+  environment = "global-dev"
+  owner       = "DevTeam"
+  ManagedBy   = "Terraform"
+  Layer       = "ops-global"
+}

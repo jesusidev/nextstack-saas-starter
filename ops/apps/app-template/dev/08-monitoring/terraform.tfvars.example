@@ -1,0 +1,35 @@
+# AWS Configuration
+region  = "us-west-2"
+profile = "default"
+
+# Environment
+environment = "dev"
+
+# Notifications
+alarm_email = "ops@app-template.com"  # Change to your email
+
+# Logging
+log_retention_days = 7  # Dev: 7 days, Prod: 30+ days
+
+# Module Monitoring Flags
+monitor_alb = false  # Set to true if 06-loadbalancer deployed
+monitor_rds = false  # Set to true if 04-database deployed
+
+# EC2 Thresholds
+ec2_cpu_threshold = 80  # Alert at 80% CPU
+
+# ALB Thresholds (if monitoring ALB)
+alb_response_time_threshold = 2   # Alert if response > 2 seconds
+alb_5xx_threshold          = 10   # Alert if >10 5XX errors in 5 min
+
+# RDS Thresholds (if monitoring RDS)
+rds_cpu_threshold         = 80           # Alert at 80% CPU
+rds_storage_threshold_bytes = 5368709120  # Alert at 5GB free (5 * 1024^3)
+
+# Tags
+tags = {
+  Project     = "AppTemplate"
+  Environment = "dev"
+  ManagedBy   = "terraform"
+  Team        = "engineering"
+}

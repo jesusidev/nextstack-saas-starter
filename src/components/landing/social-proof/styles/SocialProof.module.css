@@ -1,0 +1,111 @@
+.section {
+  padding: calc(var(--mantine-spacing-xl) * 4) 0;
+  background-color: light-dark(var(--mantine-color-white-0), var(--mantine-color-dark-9));
+
+  @media (min-width: $breakpoint-tablet) {
+    padding: calc(var(--mantine-spacing-xl) * 6) 0;
+  }
+
+  @media (min-width: $breakpoint-laptop) {
+    padding: calc(var(--mantine-spacing-xl) * 7) 0;
+  }
+}
+
+.header {
+  text-align: center;
+  margin-bottom: calc(var(--mantine-spacing-xl) * 3);
+}
+
+.title {
+  font-size: 32px;
+  font-weight: 800;
+  color: light-dark(var(--mantine-color-black), var(--mantine-color-white-0));
+
+  @media (min-width: $breakpoint-mobile) {
+    font-size: 38px;
+  }
+
+  @media (min-width: $breakpoint-tablet) {
+    font-size: 42px;
+  }
+}
+
+.statsContainer {
+  display: flex;
+  justify-content: center;
+  gap: calc(var(--mantine-spacing-xl) * 2);
+  margin-bottom: calc(var(--mantine-spacing-xl) * 4);
+  flex-wrap: wrap;
+
+  @media (min-width: $breakpoint-tablet) {
+    gap: calc(var(--mantine-spacing-xl) * 3);
+  }
+}
+
+.stat {
+  text-align: center;
+  min-width: 150px;
+}
+
+.statValue {
+  font-size: 36px;
+  font-weight: 900;
+  color: var(--mantine-color-blue-6);
+  line-height: 1;
+
+  @media (min-width: $breakpoint-mobile) {
+    font-size: 42px;
+  }
+
+  @media (min-width: $breakpoint-tablet) {
+    font-size: 48px;
+  }
+
+  @media (min-width: $breakpoint-laptop) {
+    font-size: 54px;
+  }
+}
+
+.statLabel {
+  font-size: 16px;
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-gray-4));
+  margin-top: var(--mantine-spacing-xs);
+
+  @media (min-width: $breakpoint-tablet) {
+    font-size: 18px;
+  }
+}
+
+.testimonialCard {
+  padding: calc(var(--mantine-spacing-xl) * 1.5);
+  background: light-dark(var(--mantine-color-white-0), var(--mantine-color-dark-7));
+  border: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-5));
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+
+  @media (min-width: $breakpoint-tablet) {
+    padding: calc(var(--mantine-spacing-xl) * 2);
+  }
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.quote {
+  font-size: 16px;
+  line-height: 1.6;
+  font-style: italic;
+  color: light-dark(var(--mantine-color-gray-8), var(--mantine-color-gray-3));
+  flex: 1;
+
+  @media (min-width: $breakpoint-tablet) {
+    font-size: 17px;
+    line-height: 1.7;
+  }
+}

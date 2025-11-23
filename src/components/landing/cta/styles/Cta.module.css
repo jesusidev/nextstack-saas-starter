@@ -1,0 +1,102 @@
+.section {
+  padding: calc(var(--mantine-spacing-xl) * 5) 0;
+  background-color: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-8));
+  text-align: center;
+
+  @media (min-width: $breakpoint-mobile) {
+    padding: calc(var(--mantine-spacing-xl) * 6) 0;
+  }
+
+  @media (min-width: $breakpoint-tablet) {
+    padding: calc(var(--mantine-spacing-xl) * 7) 0;
+  }
+
+  @media (min-width: $breakpoint-laptop) {
+    padding: calc(var(--mantine-spacing-xl) * 8) 0;
+  }
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.title {
+  font-size: 32px;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--mantine-color-blue-6), var(--mantine-color-teal-5));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+
+  @media (min-width: $breakpoint-mobile) {
+    font-size: 42px;
+  }
+
+  @media (min-width: $breakpoint-tablet) {
+    font-size: 48px;
+  }
+
+  @media (min-width: $breakpoint-laptop) {
+    font-size: 54px;
+  }
+}
+
+.subtitle {
+  font-size: 18px;
+  line-height: 1.6;
+  color: light-dark(var(--mantine-color-gray-7), rgba(255, 255, 255, 0.9));
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+
+  @media (min-width: $breakpoint-mobile) {
+    font-size: 20px;
+  }
+}
+
+.ctaButton {
+  background: linear-gradient(135deg, var(--mantine-color-blue-6), var(--mantine-color-blue-7));
+  color: var(--mantine-color-white-0);
+  font-size: 18px;
+  font-weight: 700;
+  height: 60px;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+
+  &:hover {
+    background: linear-gradient(135deg, var(--mantine-color-blue-7), var(--mantine-color-blue-8));
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(0, 100, 230, 0.3);
+  }
+
+  @media (max-width: $breakpoint-mobile) {
+    font-size: 16px;
+    height: 54px;
+    padding: 0 var(--mantine-spacing-xl);
+  }
+}
+
+.trustSignals {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mantine-spacing-sm);
+
+  @media (min-width: $breakpoint-mobile) {
+    flex-direction: row;
+    justify-content: center;
+  }
+}
+
+.trustSignal {
+  color: light-dark(var(--mantine-color-gray-6), rgba(255, 255, 255, 0.85));
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.checkIcon {
+  opacity: 0.9;
+}

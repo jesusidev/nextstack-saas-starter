@@ -1,0 +1,40 @@
+/**
+ * Cookie Preferences Button Styles
+ *
+ * Floating action button (FAB) positioned in bottom-right corner.
+ * Responsive positioning with proper spacing from edges.
+ */
+
+/* Wrapper for fixed positioning */
+.buttonWrapper {
+  position: fixed;
+  bottom: 5rem;
+  right: 6rem;
+  z-index: 900;
+}
+
+/* Button styling */
+.button {
+  box-shadow: 0 4px 12px light-dark(rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.4));
+  transition: box-shadow 200ms ease;
+}
+
+.button:hover {
+  box-shadow: 0 6px 16px light-dark(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.5));
+}
+
+/* Responsive adjustments */
+@media (max-width: 48em) {
+  .buttonWrapper {
+    bottom: 4rem;
+    right: 1rem;
+  }
+}
+
+/* Tablet and up - more spacing for potential chat icon */
+@media (min-width: 48em) and (max-width: 64em) {
+  .buttonWrapper {
+    bottom: 4rem;
+    right: 4rem;
+  }
+}

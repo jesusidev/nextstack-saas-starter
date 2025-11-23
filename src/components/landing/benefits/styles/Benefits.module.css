@@ -1,0 +1,166 @@
+.section {
+  padding: calc(var(--mantine-spacing-xl) * 4) 0;
+  background-color: light-dark(var(--mantine-color-white-0), var(--mantine-color-dark-9));
+
+  @media (min-width: $breakpoint-tablet) {
+    padding: calc(var(--mantine-spacing-xl) * 6) 0;
+  }
+
+  @media (min-width: $breakpoint-laptop) {
+    padding: calc(var(--mantine-spacing-xl) * 7) 0;
+  }
+}
+
+.header {
+  text-align: center;
+  margin-bottom: calc(var(--mantine-spacing-xl) * 4);
+}
+
+.title {
+  font-size: 32px;
+  font-weight: 800;
+  color: light-dark(var(--mantine-color-black), var(--mantine-color-white-0));
+
+  @media (min-width: $breakpoint-mobile) {
+    font-size: 38px;
+  }
+
+  @media (min-width: $breakpoint-tablet) {
+    font-size: 42px;
+  }
+}
+
+.benefits {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--mantine-spacing-xl) * 4);
+}
+
+.benefitBlock {
+}
+
+.benefitGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: calc(var(--mantine-spacing-xl) * 2);
+  align-items: center;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+
+  @media (min-width: $breakpoint-tablet) {
+    grid-template-columns: 1fr 1fr;
+    gap: calc(var(--mantine-spacing-xl) * 2.5);
+  }
+
+  @media (min-width: $breakpoint-laptop) {
+    gap: calc(var(--mantine-spacing-xl) * 3);
+  }
+
+  @media (min-width: $breakpoint-desktop) {
+    gap: calc(var(--mantine-spacing-xl) * 4);
+  }
+}
+
+.imageRight {
+}
+
+.imageLeft {
+  .benefitContent {
+    @media (min-width: $breakpoint-tablet) {
+      order: 1;
+    }
+
+    @media (min-width: $breakpoint-laptop) {
+      order: 2;
+    }
+  }
+
+  .benefitVisual {
+    @media (min-width: $breakpoint-tablet) {
+      order: 2;
+    }
+
+    @media (min-width: $breakpoint-laptop) {
+      order: 1;
+    }
+  }
+}
+
+.benefitContent {
+}
+
+.benefitHeadline {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: light-dark(var(--mantine-color-black), var(--mantine-color-white-0));
+
+  @media (min-width: $breakpoint-mobile) {
+    font-size: 28px;
+  }
+
+  @media (min-width: $breakpoint-tablet) {
+    font-size: 32px;
+  }
+}
+
+.benefitDescription {
+  font-size: 16px;
+  line-height: 1.6;
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-gray-4));
+
+  @media (min-width: $breakpoint-mobile) {
+    font-size: 18px;
+  }
+
+  @media (min-width: $breakpoint-tablet) {
+    font-size: 19px;
+    line-height: 1.65;
+  }
+}
+
+.metric {
+  font-size: 24px;
+  color: var(--mantine-color-blue-6);
+  font-weight: 700;
+
+  @media (min-width: $breakpoint-mobile) {
+    font-size: 28px;
+  }
+
+  @media (min-width: $breakpoint-tablet) {
+    font-size: 32px;
+  }
+}
+
+.benefitVisual {
+  min-height: 300px;
+
+  @media (min-width: $breakpoint-mobile) {
+    min-height: 350px;
+  }
+
+  @media (min-width: $breakpoint-tablet) {
+    min-height: 400px;
+  }
+}
+
+.visualPlaceholder {
+  width: 100%;
+  height: 300px;
+  background: light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-8));
+  border-radius: var(--mantine-radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-5));
+
+  @media (min-width: $breakpoint-mobile) {
+    height: 350px;
+  }
+
+  @media (min-width: $breakpoint-tablet) {
+    height: 400px;
+  }
+}

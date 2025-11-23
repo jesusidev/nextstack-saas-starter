@@ -1,0 +1,39 @@
+.overlay {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 200px;
+  pointer-events: none;
+  z-index: 100;
+  background: linear-gradient(
+    to top,
+    light-dark(rgba(255, 255, 255, 1), rgba(26, 27, 30, 1)) 0%,
+    light-dark(rgba(255, 255, 255, 0.95), rgba(26, 27, 30, 0.95)) 40%,
+    light-dark(rgba(255, 255, 255, 0.7), rgba(26, 27, 30, 0.7)) 70%,
+    transparent 100%
+  );
+}
+
+.indicator {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.arrow {
+  color: light-dark(var(--mantine-color-blue-6), var(--mantine-color-blue-4));
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.text {
+  color: light-dark(var(--mantine-color-blue-7), var(--mantine-color-blue-3));
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
+}
